@@ -39,9 +39,14 @@ Lưu ý:
 Đầu ra cho mỗi câu B là một object JSON có dạng:
 
 {
-  "sentence_start": <min(sentence_start_A)>,
-  "sentence_end": <max(sentence_end_A)>,
-  "sentence_form": "<sentence_form_B>"
+    "sentences": [
+        {
+            "sentence_start": <min(sentence_start_A)>,
+            "sentence_end": <max(sentence_end_A)>,
+            "sentence_form": "<sentence_form_B>"
+        },
+        ...
+    ]
 }
 
 Trong đó:
@@ -52,7 +57,6 @@ Trong đó:
 Không giải thích gì thêm.
 
 """
-
 
 
 def _extract_from_json_value(value: Any) -> str:
