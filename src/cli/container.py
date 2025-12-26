@@ -52,6 +52,7 @@ class AppContainer:
     segment_service_factory: SegmentServiceFactory
     translate: Translate
     tts: TextToSpeech
+    openai_client: OpenAI
 
 
 def build_container() -> AppContainer:
@@ -85,4 +86,5 @@ def build_container() -> AppContainer:
         segment_service_factory=segment_service_factory,
         translate=translate,
         tts=tts,
+        openai_client=openai_client,
     )
