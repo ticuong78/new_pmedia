@@ -15,7 +15,9 @@ from src.cli.cache import BASE_CACHE_DIR
 from src.infras.segmenting.openai_segmenting import OpenAISegmenter
 from src.infras.stt.elevenlabs import STTElevenlabs
 from src.infras.translate.openai_translate import OpenAITranslator
+from src.infras.tts.elevenlabs import TTSElevenlabs
 from openai import OpenAI
+from src.application.usecases.tts import TextToSpeech
 
 load_dotenv()
 
@@ -49,6 +51,7 @@ class AppContainer:
     transcribe: Transcribe
     segment_service_factory: SegmentServiceFactory
     translate: Translate
+    tts: TextToSpeech
 
 
 def build_container() -> AppContainer:
@@ -66,6 +69,7 @@ def build_container() -> AppContainer:
     cache = DiskCache(directory=str(cache_dir))
 
     stt_adapter = STTElevenlabs(elevenlabs_client.speech_to_text)
+    tts_adapter = TTSElevenlabs(elevenlabs_client.text_to_speech)
 
     # factory
     segment_service_factory = SegmentServiceFactory(openai_client)
@@ -73,10 +77,12 @@ def build_container() -> AppContainer:
     # use cases
     transcribe = Transcribe(stt_adapter, cache)
     translate = Translate(OpenAITranslator(openai_client), cache)
+    tts = TextToSpeech(tts_adapter, cache)
 
     return AppContainer(
         cache=cache,
         transcribe=transcribe,
         segment_service_factory=segment_service_factory,
         translate=translate,
+        tts=tts,
     )

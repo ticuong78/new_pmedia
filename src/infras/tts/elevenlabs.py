@@ -2,8 +2,9 @@ from typing import Optional, Iterator
 
 from elevenlabs.text_to_speech.client import TextToSpeechClient
 
+from src.domain.core.tts_base import TTSBase
 
-class TTSElevenlabs:
+class TTSElevenlabs(TTSBase):
     _eleven_client: TextToSpeechClient = None  # type: ignore
 
     def __init__(self, _eleven_client: TextToSpeechClient) -> None:

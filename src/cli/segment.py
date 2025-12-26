@@ -6,7 +6,7 @@ from rich.console import Console
 from src.cli.container import AppContainer
 from src.domain.core.stt_base import STTResponse
 
-console = Console()
+console = console = Console(force_terminal=True, legacy_windows=False)
 
 app = typer.Typer()
 
@@ -52,6 +52,7 @@ def segment(
         "chatgpt-4o-latest",
         "gpt-4o-2024-11-20",
     ] = typer.Option("gpt-4o", help="OpenAi model to use"),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress console output"),
     ctx: typer.Context = typer.Option(None, hidden=True),
 ):
     if not isinstance(ctx.obj, AppContainer):
@@ -66,19 +67,23 @@ def segment(
         raise ValueError("Segment Technique should not be null.")
 
     if transcript is None:
-        console.print("[red]Not found[/red]")
+        # if not quiet:
+        # print"[red]Not found[/red]")
         raise typer.Exit(1)
 
     if isinstance(transcript, STTResponse):
-        console.print("[green]Segmenting transcript...[/green]")
+        # if not quiet:
+        # print"[green]Segmenting transcript...[/green]")
         (result, key) = segment_tecnique.segment(transcript.words)  # type: ignore
+        print(key)
 
-        console.print(result)
+        # if not quiet:
+        # printresult)
+        # printf"[cyan]Cached segmented transcript key: [/cyan]{key}")
 
-        console.print(f"[cyan]Cached segmented transcript key: [/cyan]{key}")
-
-    else:
-        console.print(
-            f"[red]Unsupported transcript type: [/red] {type(transcript).__name__}"
-        )
-        raise typer.Exit(code=1)
+    # else:
+    # if not quiet:
+    #     # print
+    #         f"[red]Unsupported transcript type: [/red] {type(transcript).__name__}"
+    #     )
+    # raise typer.Exit(code=1)

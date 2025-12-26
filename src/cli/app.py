@@ -17,7 +17,7 @@ def init_app(ctx: typer.Context):
 app.add_typer(stt.app, name="stt")
 app.add_typer(tts.app, name="tts")
 app.add_typer(cache.app, name="cache")
-app.add_typer(translate_cli.app, name="translate")
+app.command(name="translate")(translate_cli.translate)
 app.command(name="segment")(segment.segment)
 
 

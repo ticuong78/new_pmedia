@@ -1,12 +1,15 @@
 {
-  "name": "new_pmedia",
+  "name": "pmedia-work",
   "version": "1.0.0",
   "description": "",
   "license": "ISC",
   "author": "",
   "type": "commonjs",
-  "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start-n8n": "cross-env NODE_FUNCTION_ALLOW_BUILTIN=fs n8n"
+  },
+  "dependencies": {
+    "cross-env": "^10.1.0",
+    "n8n": "^1.121.3"
   }
 }

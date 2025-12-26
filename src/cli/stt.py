@@ -5,7 +5,7 @@ from rich.console import Console
 
 from src.cli.container import AppContainer
 
-console = Console()
+console = console = Console(force_terminal=True, legacy_windows=False)
 app = typer.Typer(help="Speech-to-text commands")
 
 
@@ -18,6 +18,7 @@ def transcribe(
         "-m",
         help="ElevenLabs STT model id",
     ),
+    quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress console output"),
     ctx: typer.Context = typer.Option(None, hidden=True),
 ):
     """Transcribe audio, cache the result, and print the cache key."""
@@ -31,10 +32,13 @@ def transcribe(
 
     response, key = ctx.obj.transcribe.execute(model_id, audio_bytes)
 
-    console.rule("[bold green]Transcription Complete")
-    console.print(f"[cyan]Cache key:[/cyan] {key}")
-    if response and getattr(response, "text", None):
-        preview = response.text.strip()
-        if len(preview) > 200:
-            preview = preview[:200] + "..."
-        console.print(f"[bold]Preview:[/bold] {preview}")
+    print(key)
+
+    if not quiet:
+        # print"[bold green]Transcription Complete")
+        # printf"[cyan]Cache key:[/cyan] {key}")
+        if response and getattr(response, "text", None):
+            preview = response.text.strip()
+            if len(preview) > 200:
+                preview = preview[:200] + "..."
+            # printf"[bold]Preview:[/bold] {preview}")

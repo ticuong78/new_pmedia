@@ -11,7 +11,12 @@ class Translate:
         self, text: str, target_language: str, source_language: str | None = None
     ) -> tuple[str, str | None]:
         key = (
-            self._cache.make_key("translate", target_language, source_language or "", text)
+            self._cache.make_key(
+                "translate",
+                target_language,
+                source_language or "",
+                bytes(text, "utf-8"),
+            )
             if self._cache
             else None
         )
