@@ -1,0 +1,255 @@
+{
+  "name": "My workflow 2",
+  "nodes": [
+    {
+      "parameters": {
+        "triggerOn": "folder",
+        "path": "video",
+        "events": [
+          "add"
+        ],
+        "options": {
+          "awaitWriteFinish": true
+        }
+      },
+      "type": "n8n-nodes-base.localFileTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "79dd86e0-adee-4dc0-9ef2-77d061fad3a4",
+      "name": "Local File Trigger"
+    },
+    {
+      "parameters": {
+        "command": "=chcp 65001\n"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "a12024e6-a888-4ba9-88b9-e70c90b2529d",
+      "name": "Execute Command"
+    },
+    {
+      "parameters": {
+        "command": "=uv run python -m src.main stt transcribe  {{ $('Local File Trigger').item.json.path }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        416,
+        0
+      ],
+      "id": "c7a49043-8f1a-4cfd-937c-82fcebd9b15e",
+      "name": "Execute Command1"
+    },
+    {
+      "parameters": {
+        "command": "=uv run python -m src.main segment  {{ $json.stdout }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "a929c915-63d9-4e9b-a79e-c53819eff750",
+      "name": "Execute Command2"
+    },
+    {
+      "parameters": {
+        "command": "=uv run python -m src.main translate {{ $('Execute Command1').item.json.stdout }} -t vi --from zh "
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        832,
+        0
+      ],
+      "id": "8d0db1cc-9188-4587-a650-833285563c87",
+      "name": "Execute Command3"
+    },
+    {
+      "parameters": {
+        "command": "=uv run python -m src.main tts synthesize --key {{ $('Execute Command3').item.json.stdout }} --voice d5HVupAWCwe4e6GvMCAL --model eleven_v3 -o {{ $json.output }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1248,
+        0
+      ],
+      "id": "df71bcf6-27eb-4749-8e31-499879e04b4d",
+      "name": "Execute Command4"
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "from pathlib import Path\nimport json\n\n\ndef alter_ext(src: Path, suffix: str) -> Path:\n    p = Path(src)\n    return p.with_suffix(suffix)\n\ndef append_suffix_before_ext(src: Path, extra_suffix: str) -> Path:\n    p = Path(src)\n    return p.with_stem(p.stem + extra_suffix)\n\nsrc = _('Local File Trigger').first().json.path\nout = append_suffix_before_ext(Path(src), \"_translated\")\nspeed = append_suffix_before_ext(Path(src), \"_speeded_up\")\n\nprint(src)\n\nreturn {\n  \"original\": src,\n  \"output\": str(alter_ext(out, \".mp3\")),\n  \"speed_up\": str(alter_ext(speed, \".mp3\")),\n}\n\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1040,
+        0
+      ],
+      "id": "2d4e49de-7161-432a-a5a6-3ce75e41db9f",
+      "name": "Code in Python (Beta)"
+    },
+    {
+      "parameters": {
+        "command": "=ffmpeg -i {{ $('Code in Python (Beta)').item.json.output }} -filter:a \"atempo=1.2\" {{ $('Code in Python (Beta)').item.json.speed_up }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1456,
+        0
+      ],
+      "id": "98ade42d-d1b4-4cdb-b0f5-5380662a677a",
+      "name": "Execute Command5"
+    },
+    {
+      "parameters": {
+        "command": "=uv run python -m src.main stt transcribe  {{ $('Code in Python (Beta)').item.json.speed_up }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1664,
+        0
+      ],
+      "id": "14e9b35f-81c3-4ea3-b9f2-74a8d2da8e1b",
+      "name": "Execute Command6"
+    },
+    {
+      "parameters": {
+        "command": "=uv run python -m src.main segment  {{ $json.stdout }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        1872,
+        0
+      ],
+      "id": "3452258b-339e-404a-9010-2cd2027f8232",
+      "name": "Execute Command7"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Local File Trigger": {
+      "main": [
+        [
+          {
+            "node": "Execute Command",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command": {
+      "main": [
+        [
+          {
+            "node": "Execute Command1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command1": {
+      "main": [
+        [
+          {
+            "node": "Execute Command2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command2": {
+      "main": [
+        [
+          {
+            "node": "Execute Command3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command3": {
+      "main": [
+        [
+          {
+            "node": "Code in Python (Beta)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in Python (Beta)": {
+      "main": [
+        [
+          {
+            "node": "Execute Command4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command4": {
+      "main": [
+        [
+          {
+            "node": "Execute Command5",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command5": {
+      "main": [
+        [
+          {
+            "node": "Execute Command6",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command6": {
+      "main": [
+        [
+          {
+            "node": "Execute Command7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "febfff01-4ef9-4f61-9013-690c71add98e",
+  "meta": {
+    "instanceId": "f5fbe5e204e81d7b9d542db4e23137f3d0ecdae653f5c0fdbd8623cc339f4d13"
+  },
+  "id": "dDEkt31d9txl36aO",
+  "tags": []
+}
