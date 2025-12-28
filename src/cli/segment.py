@@ -53,14 +53,18 @@ def segment(
         "gpt-4o-2024-11-20",
     ] = typer.Option("gpt-4o", help="OpenAi model to use"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress console output"),
+    # is_caption: bool = typer.Option(False, "--is-caption/--is-not-caption"),
     ctx: typer.Context = typer.Option(None, hidden=True),
 ):
     if not isinstance(ctx.obj, AppContainer):
         raise typer.BadParameter("App container not initialized")
 
     transcript = ctx.obj.cache.get(key)
+
+    prompt = SEGMENT_PROMPT
+
     segment_tecnique = ctx.obj.segment_service_factory.get_segment_service(
-        technique, SEGMENT_PROMPT, model=model
+        technique, prompt, model=model
     )
 
     if not segment_tecnique:
