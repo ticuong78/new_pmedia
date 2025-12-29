@@ -110,6 +110,32 @@ Không giải thích thêm, không markdown ngoài JSON.
   ]
 }
 
+LƯU Ý CHO CÂU CUỐI (BẮT BUỘC):
+
+Sau khi hoàn tất việc map toàn bộ câu và sinh xong phiên bản C,
+hãy so sánh tổng thời lượng thoại của B và C như sau:
+
+- total_duration_B
+  = tổng ( B[i].sentence_end - B[i].sentence_start ) với mọi câu i trong B
+
+- total_duration_C
+  = tổng ( C[i].sentence_end - C[i].sentence_start ) với mọi câu i trong C
+    (tính trên các giá trị sentence_end hiện tại, CHƯA đệm)
+
+Nếu total_duration_B > total_duration_C
+(thể hiện phiên bản C bị hụt thời lượng so với B),
+thì bù phần thời lượng còn thiếu bằng cách:
+
+sentence_end_C[last]
+  = sentence_end_C[last]
+  + ( total_duration_B - total_duration_C )
+
+Ràng buộc bắt buộc:
+- Chỉ được phép cập nhật `sentence_end` của câu C cuối cùng.
+- Không được thay đổi `sentence_start` của bất kỳ câu nào.
+- Không phân bổ phần thời lượng bị hụt sang các câu khác.
+- Không được thay đổi nội dung `sentence_form`.
+
 """
 
 
