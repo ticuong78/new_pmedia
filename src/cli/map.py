@@ -120,7 +120,6 @@ hãy so sánh tổng thời lượng thoại của B và C như sau:
 
 - total_duration_C
   = tổng ( C[i].sentence_end - C[i].sentence_start ) với mọi câu i trong C
-    (tính trên các giá trị sentence_end hiện tại, CHƯA đệm)
 
 Nếu total_duration_B > total_duration_C
 (thể hiện phiên bản C bị hụt thời lượng so với B),
@@ -210,7 +209,7 @@ def map(
     model: Optional[str] = typer.Option(
         None,
         "--model",
-        help="Override OpenAI model id; defaults to gpt-4o.",
+        help="Override OpenAI model id; defaults to gpt-5-mini-2025-08-07.",
     ),
     show_prompt: bool = typer.Option(
         False, "--show-prompt", help="Print the filled prompt before sending to OpenAI."
@@ -253,7 +252,7 @@ def map(
                 },
                 {"role": "user", "content": filled_prompt},
             ],
-            model=model or "gpt-4o",
+            model=model or "gpt-5-mini-2025-08-07",
             response_format={"type": "json_object"},
         )
     except Exception as exc:
@@ -271,7 +270,7 @@ def map(
     except Exception as exc:
         raise typer.Exit(code=1) from exc
 
-    map_key = cache.make_key("map", rut_key, goc_key, model or "gpt-4o")
+    map_key = cache.make_key("map", rut_key, goc_key, model or "gpt-5-mini-2025-08-07")
     cache.set(map_key, parsed)
 
     print(map_key)

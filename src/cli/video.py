@@ -24,7 +24,7 @@ FONT = "Arial"
 FONT_SIZE = 52
 FONT_COLOR = "white"
 
-WRAP_WIDTH = 36
+WRAP_WIDTH = 50
 LINE_SPACING = 18
 
 ASS_MARGIN_V = 420
@@ -47,9 +47,9 @@ def _run(cmd: list[str]) -> None:
 # ----------------------------
 def _caption_vertical_offset(line_count: int) -> int:
     if line_count == 2:
-        return 1 * LINE_SPACING
+        return 1 * LINE_SPACING + 5
     elif line_count == 1:
-        return 2 * LINE_SPACING
+        return 2 * LINE_SPACING + 5
 
     return 0
 
@@ -299,15 +299,15 @@ def _concat(parts: list[Path], tmp_dir: Path) -> Path:
     return out
 
 
-def _mux_audio(video: Path, audio: Path, out: Path) -> None:
+def _mux_audio(merged_video: Path, audio_mp3: Path, video_out: Path) -> None:
     _run(
         [
             "ffmpeg",
             "-y",
             "-i",
-            video.as_posix(),
+            merged_video.as_posix(),
             "-i",
-            audio.as_posix(),
+            audio_mp3.as_posix(),
             "-map",
             "0:v:0",
             "-map",
@@ -316,8 +316,7 @@ def _mux_audio(video: Path, audio: Path, out: Path) -> None:
             "copy",
             "-c:a",
             "aac",
-            "-shortest",
-            out.as_posix(),
+            video_out.as_posix(),
         ]
     )
 
