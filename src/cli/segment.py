@@ -53,6 +53,9 @@ def segment(
         "gpt-4o-2024-11-20",
     ] = typer.Option("gpt-4o", help="OpenAi model to use"),
     quiet: bool = typer.Option(False, "--quiet", "-q", help="Suppress console output"),
+    punctuation: str | None = typer.Option(
+        None, "--punctuation", "-p", help="Sentence-ending tokens for punctuation mode"
+    ),
     # is_caption: bool = typer.Option(False, "--is-caption/--is-not-caption"),
     ctx: typer.Context = typer.Option(None, hidden=True),
 ):
@@ -64,7 +67,10 @@ def segment(
     prompt = SEGMENT_PROMPT
 
     segment_tecnique = ctx.obj.segment_service_factory.get_segment_service(
-        technique, prompt, model=model
+        technique=technique,
+        prompt=prompt if technique == "openai" else None,
+        model=model if technique == "openai" else None,
+        punctuation=punctuation,
     )
 
     if not segment_tecnique:
@@ -79,6 +85,7 @@ def segment(
         # if not quiet:
         # print"[green]Segmenting transcript...[/green]")
         (result, key) = segment_tecnique.segment(transcript.words)  # type: ignore
+        # print(result)
         print(key)
 
         # if not quiet:

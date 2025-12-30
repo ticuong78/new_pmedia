@@ -12,13 +12,15 @@ app = typer.Typer(help="Transcript mapping commands")
 DEFAULT_PROMPT_TEMPLATE_2 = """Bạn được cung cấp hai tập dữ liệu:
 
 1) **Phiên bản A** (gốc tiếng Trung), mỗi câu có:
+- `id` (số nguyên, duy nhất)
 - `sentence_start`
 - `sentence_end`
 - `sentence_form`
 
 {goc}
 
-2) **Phiên bản B** (dịch + rút gọn tiếng Việt), mỗi câu có:
+2) **Phiên bản B** (tiếng Việt đã rewrite), mỗi câu có:
+- `id` (số nguyên, duy nhất)
 - `sentence_start`
 - `sentence_end`
 - `sentence_form`
@@ -27,113 +29,59 @@ DEFAULT_PROMPT_TEMPLATE_2 = """Bạn được cung cấp hai tập dữ liệu:
 
 ====================
 ## MỤC TIÊU
-Tạo **phiên bản C** bằng cách:
-1) Với **MỖI** câu B, chọn **một câu hoặc một nhóm câu liên tiếp** trong A có **ý chính tương đương nhất** (ưu tiên “điểm neo”: giá tiền, tên sản phẩm, Hi-Res, LDAC, Bluetooth, thông số…).
-2) Gán timestamp cho C theo A, và **BẢO TOÀN TOÀN BỘ khoảng nghỉ giữa các câu như trong B** (bao gồm cả micro-gap), để tránh tổng thời lượng sau khi ghép bị bị rút ngắn.
+Tạo danh sách mapping 1–1 giữa B và A:
+- Với **MỖI** câu B, chọn **CHÍNH XÁC 1** câu A có ngữ nghĩa/ý chính tương đương nhất.
+- Ưu tiên match bằng **điểm neo (anchors)**.
 
 ====================
-## QUY TẮC GHÉP NỘI DUNG (A ↔ B)
-- Không cần khớp từng chữ; chỉ cần đúng ngữ cảnh/ý chính.
-- Một câu B có thể map tới nhiều câu A **liên tiếp**.
-- Ưu tiên đoạn A có “điểm neo” rõ ràng để cắt ghép ổn định.
+## RÀNG BUỘC 1–1 (CỰC QUAN TRỌNG)
+- Mỗi câu B phải map tới đúng 1 câu A.
+- Một câu A chỉ được dùng cho tối đa 1 câu B (không được nhiều B dùng chung 1 A).
+- Mapping phải giữ thứ tự timeline:
+  - Nếu `id_B(i) < id_B(j)` thì `id_A(i) < id_A(j)`.
+
+Nếu hai câu B có nội dung gần nhau nhưng A chỉ có một câu “neo mạnh”:
+- Câu B nào bám neo rõ hơn thì lấy câu A đó.
+- Câu B còn lại phải chọn câu A kế cận có cùng chủ đề (dù neo yếu hơn) để tránh dùng chung.
 
 ====================
-## QUY TẮC TIMESTAMP (C) + BẢO TOÀN KHOẢNG NGHỈ (KHÔNG DÙNG NGƯỠNG)
-Ký hiệu:
-- `duration_B[i] = B[i].sentence_end - B[i].sentence_start`
-- `gap_B[i] = B[i+1].sentence_start - B[i].sentence_end` (chỉ áp dụng với i < n-1)
-- Định nghĩa khoảng nghỉ cần bảo toàn:
-  - `pause_B[i] = max(0, gap_B[i])`
-  - KHÔNG được đặt ngưỡng (ví dụ 0.30s) để loại bỏ micro-gap.
-  - Mọi `pause_B[i] > 0` đều phải được giữ.
+## ĐIỂM NEO (ANCHORS)
+Điểm neo là các yếu tố định vị nội dung, ưu tiên:
+1) Con số/định lượng: 12ms, 7.1, 125 giờ, bốn chế độ, v.v.
+2) Tên sản phẩm/brand/model: 京韵 GX401 / GX401 / JINGHUIJX 401, v.v.
+3) Công nghệ/thuật ngữ: FPS, Hi-Res, LDAC, Bluetooth, Light Speed, DH, ANC, mic kéo/rút, v.v.
+4) Cụm tính năng đặc trưng: nghe tiếng bước chân/tiếng súng, đệm tai thoáng khí, bất đối xứng, đèn LED, pin, v.v.
 
-### 1) Chọn cụm A cho từng câu B
-Với mỗi câu B[i], chọn 1 cụm A[i] (1 hoặc nhiều câu A liên tiếp) sao cho đúng ý nhất.
-Ghi lại:
-- `start_A[i] = sentence_start` của câu A đầu tiên trong cụm A[i]
-- `end_A[i]   = sentence_end` của câu A cuối cùng trong cụm A[i]
-
-### 2) Tính thời lượng thoại tương ứng cho C
-- `start_C[i] = start_A[i]`
-- `talk_end_C[i] = start_C[i] + duration_B[i]`
-
-Ràng buộc phạm vi A:
-- `talk_end_C[i]` KHÔNG được vượt `end_A[i]`.
-- Nếu `talk_end_C[i] > end_A[i]`:
-  - Ưu tiên mở rộng cụm A[i] (thêm các câu A kế tiếp, vẫn liên tiếp) để `end_A[i]` đủ bao phủ `talk_end_C[i]`.
-  - Nếu không thể mở rộng hợp lý, kẹp:
-    - `talk_end_C[i] = end_A[i]`
-
-### 3) BẢO TOÀN KHOẢNG NGHỈ: đẩy start câu sau (ưu tiên), không “xóa gap”
-Mục tiêu: khoảng cách giữa hai caption trong C phải bằng khoảng cách tương ứng trong B:
-- Với i < n-1, yêu cầu:
-  - `start_C[i+1] >= talk_end_C[i] + pause_B[i]`
-
-Cách thực hiện:
-- Bước A (ưu tiên): khi chọn cụm A cho câu B[i+1], hãy chọn cụm A bắt đầu muộn hơn sao cho thỏa:
-  - `start_A[i+1] >= talk_end_C[i] + pause_B[i]`
-  Khi đó `start_C[i+1] = start_A[i+1]` và khoảng nghỉ được giữ.
-
-- Bước B (chỉ khi bắt buộc): nếu không có cụm A nào phù hợp để bắt đầu muộn hơn mà vẫn đúng ngữ nghĩa,
-  thì cho phép “kẹp khoảng nghỉ” để không overlap:
-  - `start_C[i+1] = max(start_A[i+1], talk_end_C[i])`
-  (Lưu ý: Bước B sẽ làm mất một phần pause. Chỉ dùng khi không thể chọn cụm A khác hợp lý.)
-
-### 4) Xác định `sentence_end` cho C
-Để thể hiện “khoảng nghỉ ở cuối câu trước” trong chính câu trước, đặt:
-- Nếu i < n-1:
-  - `sentence_end_C[i] = min(talk_end_C[i] + pause_B[i], start_C[i+1])`
-- Nếu i = n-1:
-  - `sentence_end_C[i] = talk_end_C[i]`
-
-Giải thích ngắn gọn bằng quy tắc:
-- Câu i kết thúc sau phần thoại + phần nghỉ (pause) của nó,
-- nhưng không bao giờ được vượt qua `start` của câu kế tiếp.
-
-### 5) Ràng buộc “KHÔNG OVERLAP”
-Bắt buộc:
-- `sentence_start_C[i+1] >= sentence_end_C[i]`
-Nếu vi phạm, phải quay lại bước chọn cụm A hoặc áp dụng kẹp theo Bước B ở trên.
+Lưu ý:
+- Anchor có thể xuất hiện bằng tiếng Việt trong B nhưng tiếng Trung trong A (ví dụ “mười hai mili giây” tương đương “十二毫秒”).
+- Không cần khớp từng chữ; chỉ cần đúng ngữ cảnh/ý.
 
 ====================
-## ĐỊNH DẠNG ĐẦU RA (BẮT BUỘC)
-Chỉ trả về DUY NHẤT 1 JSON object, có đúng 1 key ngoài cùng là `"sentences"`.
-Không giải thích thêm, không markdown ngoài JSON.
+## QUY TRÌNH CHỌN A CHO TỪNG B
+Với mỗi câu B:
+1) Trích anchors chính từ B (1–3 neo).
+2) Tìm câu A có anchors tương ứng mạnh nhất.
+3) Nếu câu A đã được dùng bởi câu B trước đó, bắt buộc chọn câu A khác (gần nhất và cùng chủ đề) để tránh trùng.
+4) Nếu có nhiều câu A đều phù hợp, chọn câu A:
+   - có neo rõ hơn,
+   - và giúp toàn bộ mapping giữ thứ tự tăng dần, không bị “đảo”.
+
+====================
+## OUTPUT (BẮT BUỘC)
+Chỉ trả về DUY NHẤT 1 JSON object, không markdown, không giải thích.
 
 {
-  "sentences": [
-    {
-      "sentence_start": <number>,
-      "sentence_end": <number>,
-      "sentence_form": "<giữ nguyên sentence_form từ B>"
-    }
+  "clarity": <number từ 0..1>,
+  "mappings": [
+    { "id_A": <number>, "id_B": <number> }
   ]
 }
 
-LƯU Ý CHO CÂU CUỐI (BẮT BUỘC):
-
-Sau khi hoàn tất việc map toàn bộ câu và sinh xong phiên bản C,
-hãy so sánh tổng thời lượng thoại của B và C như sau:
-
-- total_duration_B
-  = tổng ( B[i].sentence_end - B[i].sentence_start ) với mọi câu i trong B
-
-- total_duration_C
-  = tổng ( C[i].sentence_end - C[i].sentence_start ) với mọi câu i trong C
-
-Nếu total_duration_B > total_duration_C
-(thể hiện phiên bản C bị hụt thời lượng so với B),
-thì bù phần thời lượng còn thiếu bằng cách:
-
-sentence_end_C[last]
-  = sentence_end_C[last]
-  + ( total_duration_B - total_duration_C )
-
-Ràng buộc bắt buộc:
-- Chỉ được phép cập nhật `sentence_end` của câu C cuối cùng.
-- Không được thay đổi `sentence_start` của bất kỳ câu nào.
-- Không phân bổ phần thời lượng bị hụt sang các câu khác.
-- Không được thay đổi nội dung `sentence_form`.
+Yêu cầu thêm:
+- `mappings` phải có đúng số phần tử bằng số câu trong B.
+- `id_B` xuất hiện đúng 1 lần.
+- `id_A` không được lặp lại.
+- `mappings` phải được sắp xếp theo `id_B` tăng dần.
 
 """
 

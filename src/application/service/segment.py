@@ -30,6 +30,11 @@ class SegmentService:
             return cached, key  # type: ignore
 
         sentences = self._segmenter.segment(words)
+        # print(sentences)
+        for idx, sentence in enumerate(sentences, start=1):
+            sentence.id = idx  # type: ignore[attr-defined]
+            # print(sentence.id)
+            # print(sentence)
 
         if key and self._cache:
             self._cache.set(key, sentences)

@@ -13,6 +13,7 @@ from src.application.usecases.transcribe import Transcribe
 from src.application.usecases.translate import Translate
 from src.cli.cache import BASE_CACHE_DIR
 from src.infras.segmenting.openai_segmenting import OpenAISegmenter
+from src.infras.segmenting.punctuation_segmenting import PunctuationSegmenter
 from src.infras.stt.elevenlabs import STTElevenlabs
 from src.infras.translate.openai_translate import OpenAITranslator
 from src.infras.tts.elevenlabs import TTSElevenlabs
@@ -28,11 +29,12 @@ class SegmentServiceFactory:
 
     def get_segment_service(
         self,
-        type: Literal["openai", "words_count", "punctuation"],
+        technique: Literal["openai", "words_count", "punctuation"],
         prompt: str | None = None,
         model: str | None = None,
+        punctuation: str | None = None,
     ):
-        if type == "openai":
+        if technique == "openai":
             if not model or not prompt:
                 raise ValueError(
                     "When using openai as a segmenter, please provide your service a model and a prompt."
@@ -41,8 +43,15 @@ class SegmentServiceFactory:
             return SegmentService(
                 OpenAISegmenter(self._openai_client, prompt, model), cache
             )
+        elif technique == "punctuation":
+            cache = DiskCache(directory=str(BASE_CACHE_DIR))
+
+            if punctuation:
+                return SegmentService(PunctuationSegmenter(punctuation), cache)
+            else:
+                return SegmentService(PunctuationSegmenter(), cache)
         else:
-            ...  # haven't supported yet
+            raise ValueError(f"Unsupported segmenter type: {technique}")
 
 
 @dataclass
