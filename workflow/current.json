@@ -28,7 +28,7 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        208,
+        224,
         0
       ],
       "id": "a12024e6-a888-4ba9-88b9-e70c90b2529d",
@@ -41,7 +41,7 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        416,
+        448,
         0
       ],
       "id": "c7a49043-8f1a-4cfd-937c-82fcebd9b15e",
@@ -49,12 +49,12 @@
     },
     {
       "parameters": {
-        "command": "=uv run python -m src.main segment  {{ $json.stdout }}"
+        "command": "=uv run python -m src.main segment  {{ $json.stdout }} --technique punctuation --punctuation \"。\""
       },
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        624,
+        672,
         0
       ],
       "id": "a929c915-63d9-4e9b-a79e-c53819eff750",
@@ -62,12 +62,12 @@
     },
     {
       "parameters": {
-        "command": "=uv run python -m src.main translate {{ $('Execute Command1').item.json.stdout }} -t vi --from zh "
+        "command": "=uv run python -m src.main translate {{ $('Execute Command1').item.json.stdout }} -t vi --from zh"
       },
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        832,
+        896,
         0
       ],
       "id": "8d0db1cc-9188-4587-a650-833285563c87",
@@ -75,12 +75,12 @@
     },
     {
       "parameters": {
-        "command": "=uv run python -m src.main tts synthesize --key {{ $('Execute Command3').item.json.stdout }} --voice d5HVupAWCwe4e6GvMCAL --model eleven_v3 -o {{ $json.output }}"
+        "command": "=uv run python -m src.main tts synthesize --key {{ $('Execute Command3').item.json.stdout }} --voice UsgbMVmY3U59ijwK5mdh --model eleven_v3 -o {{ $json.output }}"
       },
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        1248,
+        1344,
         0
       ],
       "id": "df71bcf6-27eb-4749-8e31-499879e04b4d",
@@ -94,7 +94,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1040,
+        1120,
         0
       ],
       "id": "2d4e49de-7161-432a-a5a6-3ce75e41db9f",
@@ -102,12 +102,12 @@
     },
     {
       "parameters": {
-        "command": "=ffmpeg -i {{ $('Code in Python (Beta)').item.json.output }} -filter:a \"atempo=1.2\" {{ $('Code in Python (Beta)').item.json.speed_up }}"
+        "command": "=ffmpeg -i {{ $('Code in Python (Beta)').item.json.output }} -filter:a \"atempo=1.4\" {{ $('Code in Python (Beta)').item.json.speed_up }}"
       },
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        1456,
+        1568,
         0
       ],
       "id": "98ade42d-d1b4-4cdb-b0f5-5380662a677a",
@@ -120,7 +120,7 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        1664,
+        1792,
         0
       ],
       "id": "14e9b35f-81c3-4ea3-b9f2-74a8d2da8e1b",
@@ -128,15 +128,68 @@
     },
     {
       "parameters": {
-        "command": "=uv run python -m src.main segment  {{ $json.stdout }}"
+        "command": "uv run python -m src.main cache clear --yes"
       },
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        1872,
+        2896,
+        0
+      ],
+      "id": "24128f7c-6cad-400b-ad3e-397c1459c42b",
+      "name": "Execute Command10",
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "command": "=uv run python -m src.main segment  {{ $json.stdout }} --technique punctuation --punctuation \".\""
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2016,
         0
       ],
       "id": "3452258b-339e-404a-9010-2cd2027f8232",
+      "name": "Segment 2"
+    },
+    {
+      "parameters": {
+        "command": "=uv run python -m src.main map --goc-key  {{ $('Execute Command2').item.json.stdout }} --rut-key {{ $json.stdout }} --model gpt-5-mini-2025-08-07"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2240,
+        0
+      ],
+      "id": "b74ab8da-33ed-4e56-ab9c-db0db4ba45a8",
+      "name": "Map"
+    },
+    {
+      "parameters": {
+        "command": "=uv run python -m src.main video {{ $json.stdout }} --video {{ $('Code in Python (Beta)').item.json.original }} --audio {{ $('Code in Python (Beta)').item.json.speed_up }} --method ass"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2672,
+        0
+      ],
+      "id": "c14bac3d-3b51-4d05-bbb1-2fd255945d57",
+      "name": "Concate video"
+    },
+    {
+      "parameters": {
+        "command": "=uv run python -m src.main build_c --goc-key {{ $('Execute Command2').item.json.stdout }} --rut-key {{ $('Segment 2').item.json.stdout }} --map-key {{ $json.stdout }}"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        2448,
+        0
+      ],
+      "id": "164dbd64-7b0c-46db-b3eb-68a52cc16682",
       "name": "Execute Command7"
     }
   ],
@@ -234,7 +287,51 @@
       "main": [
         [
           {
+            "node": "Segment 2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Segment 2": {
+      "main": [
+        [
+          {
+            "node": "Map",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Map": {
+      "main": [
+        [
+          {
             "node": "Execute Command7",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Concate video": {
+      "main": [
+        [
+          {
+            "node": "Execute Command10",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Execute Command7": {
+      "main": [
+        [
+          {
+            "node": "Concate video",
             "type": "main",
             "index": 0
           }
@@ -246,7 +343,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "febfff01-4ef9-4f61-9013-690c71add98e",
+  "versionId": "cb8bf046-c591-4b36-b477-d78a48faafd2",
   "meta": {
     "instanceId": "f5fbe5e204e81d7b9d542db4e23137f3d0ecdae653f5c0fdbd8623cc339f4d13"
   },

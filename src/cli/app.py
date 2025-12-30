@@ -22,6 +22,7 @@ app.add_typer(cache.app, name="cache")
 app.command(name="translate")(translate_cli.translate)
 app.command(name="segment")(segment.segment)
 app.command(name="map")(map_cli.map)
+app.command(name="build_c")(map_cli.build_c)
 app.command(name="video")(video_cli.render_video)
 
 
