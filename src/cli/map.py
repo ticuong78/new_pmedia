@@ -10,18 +10,50 @@ from src.domain.core.stt_base import STTResponse
 
 app = typer.Typer(help="Transcript mapping commands")
 
-DEFAULT_PROMPT_TEMPLATE_2 = """Bạn được cung cấp hai tập dữ liệu:
+# ### 2) Tính pause cần đệm (pause_padding)
+# - Nếu i < n-1:
+#   - `pause_padding[i] = gap_B[i]` nếu `gap_B[i] >= PAUSE_THRESHOLD`
+#   - ngược lại `pause_padding[i] = 0`
+# - Nếu i = n-1: `pause_padding[i] = 0`
+
+
+# ### 5) Ràng buộc "KHÔNG OVERLAP" giữa các câu C theo thứ tự B
+# Yêu cầu: với mọi i < n-1 phải có:
+# - `start_C[i+1] >= end_C[i]`
+# Cách xử lý khi có nguy cơ overlap:
+# - Bước A (ưu tiên): khi chọn cụm A cho B[i+1], hãy chọn một cụm A **bắt đầu muộn hơn** sao cho:
+#   - `start_C[i+1] >= proposed_end_C[i]`
+#   (tức là tránh overlap bằng cách chọn start_A khác phù hợp hơn cho câu sau)
+# - Nếu không thể chọn cụm A khác hợp lý, thì Bước B (bắt buộc):
+#   - **kẹp end câu trước** để không overlap:
+#     - `end_C[i] = min(proposed_end_C[i], start_C[i+1])`
+#   - Nếu kẹp khiến câu quá ngắn vô lý, hãy quay lại và **chọn lại cụm A** (ưu tiên có điểm neo) cho một trong hai câu.
+
+# ### 4) Ràng buộc "không tạo timestamp ngoài phạm vi A"
+# Bạn KHÔNG được bịa thời gian vượt quá dữ liệu A đã chọn:
+# - Nếu `proposed_end_C[i]` vượt quá `end_A_of_group[i]` thì:
+#   - Ưu tiên **mở rộng group A** (thêm các câu A kế tiếp, vẫn phải liên tiếp) để `end_A_of_group[i]` đủ bao phủ `proposed_end_C[i]`.
+#   - Nếu không thể mở rộng hợp lý, thì **kẹp lại**:
+#     - `proposed_end_C[i] = end_A_of_group[i]`
+#   (tức là: cố giữ pause, nhưng không vượt biên A)
+
+# ### 6) Giá trị cuối cùng
+# - `end_C[i]` là giá trị sau khi đã:
+#   - cộng pause (nếu có),
+#   - mở rộng group A (nếu cần),
+#   - và kẹp để tránh overlap (nếu bắt buộc).
+
+DEFAULT_PROMPT_TEMPLATE_2 = """
+Bạn được cung cấp hai tập dữ liệu:
 
 1) **Phiên bản A** (gốc tiếng Trung), mỗi câu có:
-- `id` (số nguyên, duy nhất)
 - `sentence_start`
 - `sentence_end`
 - `sentence_form`
 
 {goc}
 
-2) **Phiên bản B** (tiếng Việt đã rewrite), mỗi câu có:
-- `id` (số nguyên, duy nhất)
+2) **Phiên bản B** (dịch + rút gọn tiếng Việt), mỗi câu có:
 - `sentence_start`
 - `sentence_end`
 - `sentence_form`
@@ -30,59 +62,53 @@ DEFAULT_PROMPT_TEMPLATE_2 = """Bạn được cung cấp hai tập dữ liệu:
 
 ====================
 ## MỤC TIÊU
-Tạo danh sách mapping 1–1 giữa B và A:
-- Với **MỖI** câu B, chọn **CHÍNH XÁC 1** câu A có ngữ nghĩa/ý chính tương đương nhất.
-- Ưu tiên match bằng **điểm neo (anchors)**.
+Tạo **phiên bản C** bằng cách:
+1) Với **MỖI** câu B, chọn **một câu** trong A có **ý chính tương đương nhất** (ưu tiên có “điểm neo”: giá tiền, tên sản phẩm, Hi-Res, LDAC, Bluetooth, thông số..., các điểm neo này phải là Tiếng Việt nhé ngoại trừ tên sản phẩm bằng Tiếng Anh).
+2) Gán timestamp cho C theo A, nhưng **có “đệm khoảng nghỉ (pause)” ở CUỐI câu trước** nếu B thể hiện có khoảng nghỉ.
 
 ====================
-## RÀNG BUỘC 1–1 (CỰC QUAN TRỌNG)
-- Mỗi câu B phải map tới đúng 1 câu A.
-- Một câu A chỉ được dùng cho tối đa 1 câu B (không được nhiều B dùng chung 1 A).
-- Mapping phải giữ thứ tự timeline:
-  - Nếu `id_B(i) < id_B(j)` thì `id_A(i) < id_A(j)`.
-
-Nếu hai câu B có nội dung gần nhau nhưng A chỉ có một câu “neo mạnh”:
-- Câu B nào bám neo rõ hơn thì lấy câu A đó.
-- Câu B còn lại phải chọn câu A kế cận có cùng chủ đề (dù neo yếu hơn) để tránh dùng chung.
+## QUY TẮC GHÉP NỘI DUNG (A với B)
+- Không cần khớp từng chữ, chỉ cần đúng ngữ cảnh/ý chính.
+- Một câu B có thể map tới nhiều câu A **liên tiếp** nhưng chỉ lấy câu đầu tiên và các câu còn lại thì để cho lần sau.
+- Không tái sử dụng A: mỗi câu A chỉ được ghép tối đa 1 lần. Mapping phải đi từ trái sang phải theo
+- Ưu tiên đoạn A có "điểm neo" dễ nhận biết để cắt ghép ổn định.
 
 ====================
-## ĐIỂM NEO (ANCHORS)
-Điểm neo là các yếu tố định vị nội dung, ưu tiên:
-1) Con số/định lượng: 12ms, 7.1, 125 giờ, bốn chế độ, v.v.
-2) Tên sản phẩm/brand/model: 京韵 GX401 / GX401 / JINGHUIJX 401, v.v.
-3) Công nghệ/thuật ngữ: FPS, Hi-Res, LDAC, Bluetooth, Light Speed, DH, ANC, mic kéo/rút, v.v.
-4) Cụm tính năng đặc trưng: nghe tiếng bước chân/tiếng súng, đệm tai thoáng khí, bất đối xứng, đèn LED, pin, v.v.
+## QUY TẮC TIMESTAMP (C) + ĐỆM KHOẢNG NGHỈ
+Ký hiệu:
+- `duration_B[i] = B[i].sentence_end - B[i].sentence_start`
+- `gap_B[i] = B[i+1].sentence_start - B[i].sentence_end` (chỉ áp dụng với i < n-1)
 
-Lưu ý:
-- Anchor có thể xuất hiện bằng tiếng Việt trong B nhưng tiếng Trung trong A (ví dụ “mười hai mili giây” tương đương “十二毫秒”).
-- Không cần khớp từng chữ; chỉ cần đúng ngữ cảnh/ý.
+### 1) Tính start/end cơ bản cho từng câu C
+Với mỗi câu B[i], sau khi chọn được A tương ứng:
+- `start_C[i] = start_A[i]`  (lấy đúng `sentence_start` của câu A đầu tiên tìm được)
+- `base_end_C[i] = start_C[i] + duration_B[i]`
+
+### 2) End có đệm pause (tạm tính)
+- `proposed_end_C[i] = base_end_C[i] + pause_padding[i]`
+
+### 3) Xử lý overlap
+Với hai đoạn bất kỳ i và j, nếu `start_C[i] == start_C[j]` thì có thể:
+- `start_C[j] = proposed_end_C[i]` (proposed_end_C đã đệm pause padding nhé)
+
+Với hai đoạn bất kỳ i và j, nếu `start_C[i] < start_C[j]` thì có thể:
+- `start_C[j] = proposed_end_C[i]` (proposed_end_C đã đệm pause padding nhé) 
 
 ====================
-## QUY TRÌNH CHỌN A CHO TỪNG B
-Với mỗi câu B:
-1) Trích anchors chính từ B (1–3 neo).
-2) Tìm câu A có anchors tương ứng mạnh nhất.
-3) Nếu câu A đã được dùng bởi câu B trước đó, bắt buộc chọn câu A khác (gần nhất và cùng chủ đề) để tránh trùng.
-4) Nếu có nhiều câu A đều phù hợp, chọn câu A:
-   - có neo rõ hơn,
-   - và giúp toàn bộ mapping giữ thứ tự tăng dần, không bị “đảo”.
-
-====================
-## OUTPUT (BẮT BUỘC)
-Chỉ trả về DUY NHẤT 1 JSON object, không markdown, không giải thích.
+## ĐỊNH DẠNG ĐẦU RA (BẮT BUỘC)
+Chỉ trả về DUY NHẤT 1 JSON object, có đúng 1 key ngoài cùng là `"sentences"`.
+Không giải thích thêm, không markdown ngoài JSON.
 
 {
-  "clarity": <number từ 0..1>,
-  "mappings": [
-    { "id_A": <number>, "id_B": <number> }
+  "confidence": <phần trăm độ tự tin về độ chính xác kết quả đầu ra>,
+  "sentences": [
+    {
+      "sentence_start": <number>,
+      "sentence_end": <number>,
+      "sentence_form": "<giữ nguyên sentence_form từ B>"
+    }
   ]
 }
-
-Yêu cầu thêm:
-- `mappings` phải có đúng số phần tử bằng số câu trong B.
-- `id_B` xuất hiện đúng 1 lần.
-- `id_A` không được lặp lại.
-- `mappings` phải được sắp xếp theo `id_B` tăng dần.
 
 """
 
