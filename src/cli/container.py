@@ -33,6 +33,7 @@ class SegmentServiceFactory:
         prompt: str | None = None,
         model: str | None = None,
         punctuation: str | None = None,
+        max_words_per_segment: int | None = None,
     ):
         if technique == "openai":
             if not model or not prompt:
@@ -50,6 +51,16 @@ class SegmentServiceFactory:
                 return SegmentService(PunctuationSegmenter(punctuation), cache)
             else:
                 return SegmentService(PunctuationSegmenter(), cache)
+        elif technique == "words_count":
+            cache = DiskCache(directory=str(BASE_CACHE_DIR))
+            from src.infras.segmenting.word_count_segmenting import WordCountSegmenter
+
+            return SegmentService(
+                WordCountSegmenter(
+                    max_words_per_segment=max_words_per_segment or 20
+                ),
+                cache,
+            )
         else:
             raise ValueError(f"Unsupported segmenter type: {technique}")
 

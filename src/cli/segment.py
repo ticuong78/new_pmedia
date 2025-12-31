@@ -56,6 +56,12 @@ def segment(
     punctuation: str | None = typer.Option(
         None, "--punctuation", "-p", help="Sentence-ending tokens for punctuation mode"
     ),
+    max_words_per_segment: int = typer.Option(
+        20,
+        "--max-words-per-segment",
+        "-m",
+        help="Max words per segment for words_count technique",
+    ),
     # is_caption: bool = typer.Option(False, "--is-caption/--is-not-caption"),
     ctx: typer.Context = typer.Option(None, hidden=True),
 ):
@@ -71,6 +77,7 @@ def segment(
         prompt=prompt if technique == "openai" else None,
         model=model if technique == "openai" else None,
         punctuation=punctuation,
+        max_words_per_segment=max_words_per_segment,
     )
 
     if not segment_tecnique:

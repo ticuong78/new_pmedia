@@ -21,14 +21,14 @@ BOX_COLOR = "black@1"  # drawtext
 BOX_BORDER = 20  # drawtext
 
 FONT = "Arial"
-FONT_SIZE = 52
+FONT_SIZE = 70
 FONT_COLOR = "white"
 
-WRAP_WIDTH = 70
+WRAP_WIDTH = 30
 LINE_SPACING = 18
 
-ASS_MARGIN_V = 420
-ASS_OUTLINE = 0
+ASS_MARGIN_V = 350
+ASS_OUTLINE = 30
 ASS_SHADOW = 0
 ASS_BOX_ALPHA = 0  # nền đen đặc
 
@@ -47,9 +47,9 @@ def _run(cmd: list[str]) -> None:
 # ----------------------------
 def _caption_vertical_offset(line_count: int) -> int:
     if line_count == 2:
-        return 1 * LINE_SPACING + 5
+        return 1 * LINE_SPACING + 15
     elif line_count == 1:
-        return 2 * LINE_SPACING + 5
+        return 2 * LINE_SPACING + 50
 
     return 0
 
