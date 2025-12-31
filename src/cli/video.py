@@ -5,7 +5,7 @@ import tempfile
 import textwrap
 import unicodedata
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Optional
 
 import typer
 
@@ -24,13 +24,25 @@ FONT = "Arial"
 FONT_SIZE = 70
 FONT_COLOR = "white"
 
-WRAP_WIDTH = 30
+WRAP_WIDTH = 55
 LINE_SPACING = 18
 
-ASS_MARGIN_V = 350
-ASS_OUTLINE = 30
+CAPTION_BASE_OFFSET = 86  # base lift for single-line captions
+CAPTION_PER_LINE_OFFSET = 9  # extra lift per additional wrapped line
+
+CAPTION_BOX_H_DEFAULT = 260
+CAPTION_BOX_PAD_BOTTOM_DEFAULT = 0
+
+ASS_MARGIN_V = 340
+ASS_OUTLINE = 0
 ASS_SHADOW = 0
 ASS_BOX_ALPHA = 0  # nền đen đặc
+TEXT_Y_BIAS = 1375  # số âm = đẩy lên (px theo PlayResY)
+TEXT_Y_BIAS_PER_EXTRA_LINE = -6  # mỗi dòng thêm (từ dòng 2 trở đi) đẩy lên thêm chút
+
+# Active box metrics used to align ASS text relative to the caption box center.
+_ACTIVE_CAPTION_BOX_H = CAPTION_BOX_H_DEFAULT
+_ACTIVE_CAPTION_BOX_PAD_BOTTOM = CAPTION_BOX_PAD_BOTTOM_DEFAULT
 
 
 # ----------------------------
@@ -46,12 +58,11 @@ def _run(cmd: list[str]) -> None:
 # Caption vertical offset logic
 # ----------------------------
 def _caption_vertical_offset(line_count: int) -> int:
-    if line_count == 2:
-        return 1 * LINE_SPACING + 15
-    elif line_count == 1:
-        return 2 * LINE_SPACING + 50
+    if line_count <= 0:
+        return 0
 
-    return 0
+    extra_lines = max(0, line_count - 1)
+    return CAPTION_BASE_OFFSET + extra_lines * CAPTION_PER_LINE_OFFSET
 
 
 # ----------------------------
@@ -204,6 +215,19 @@ def _write_ass_file(path: Path, duration: float, text: str, line_count: int) -> 
 
     ass_text = _escape_ass_text(text)
 
+    # Compute center of the caption box (assuming PlayResX=1080, PlayResY=1920).
+    box_h = _ACTIVE_CAPTION_BOX_H or CAPTION_BOX_H_DEFAULT
+    box_pad_bottom = _ACTIVE_CAPTION_BOX_PAD_BOTTOM or 0
+    center_x = 540
+    center_y = int(1920 - margin_v - (box_h / 2) + box_pad_bottom)
+
+    # Bias upward based on wrapped line count.
+    extra_lines = max(0, line_count - 1)
+    center_y += TEXT_Y_BIAS + extra_lines * TEXT_Y_BIAS_PER_EXTRA_LINE
+
+    # Force text to anchor at the center position.
+    ass_text = f"{{\\an5\\pos({center_x},{center_y})}}{ass_text}"
+
     content = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: 1080
@@ -211,7 +235,7 @@ PlayResY: 1920
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Default,{FONT},{FONT_SIZE},{primary},{primary},{primary},{back},0,0,0,0,100,100,0,0,3,{ASS_OUTLINE},{ASS_SHADOW},2,80,80,{margin_v},1
+Style: Default,{FONT},{FONT_SIZE},{primary},{primary},{primary},{back},0,0,0,0,100,100,0,0,1,{ASS_OUTLINE},{ASS_SHADOW},5,80,80,0,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -232,6 +256,7 @@ def _render_parts(
     segments: list[dict[str, Any]],
     tmp_dir: Path,
     method: Literal["ass", "drawtext"],
+    box_filter: Optional[str],
 ) -> list[Path]:
     outputs: list[Path] = []
 
@@ -244,11 +269,13 @@ def _render_parts(
         if method == "drawtext":
             txt = tmp_dir / f"cap_{i:03d}.txt"
             _write_text_utf8(txt, wrapped_text)
-            vf = _drawtext_filter_from_file(txt, line_count)
+            vf_text = _drawtext_filter_from_file(txt, line_count)
+            vf = f"{box_filter},{vf_text}" if box_filter else vf_text
         else:
             ass = tmp_dir / f"cap_{i:03d}.ass"
             _write_ass_file(ass, duration, wrapped_text, line_count)
-            vf = _subtitles_filter(ass)
+            vf_sub = _subtitles_filter(ass)
+            vf = f"{box_filter},{vf_sub}" if box_filter else vf_sub
 
         _run(
             [
@@ -322,6 +349,68 @@ def _mux_audio(merged_video: Path, audio_mp3: Path, video_out: Path) -> None:
 
 
 # ----------------------------
+# Standalone box overlay helper
+# ----------------------------
+def add_box_overlay(
+    video_in: Path,
+    video_out: Path,
+    box_h: int = 260,
+    alpha: float = 0.75,
+    box_width: Optional[int] = None,
+    align: Literal["left", "center", "right"] = "center",
+    margin_bottom: int = 0,
+) -> None:
+    """Overlay a translucent box at the bottom of a video."""
+    vf = _build_box_filter(
+        box_h=box_h,
+        alpha=alpha,
+        box_width=box_width,
+        align=align,
+        margin_bottom=margin_bottom,
+    )
+    _run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(video_in),
+            "-vf",
+            vf,
+            "-c:a",
+            "copy",
+            str(video_out),
+        ]
+    )
+
+
+def _build_box_filter(
+    *,
+    box_h: int,
+    alpha: float,
+    box_width: Optional[int],
+    align: Literal["left", "center", "right"],
+    margin_bottom: int,
+) -> str:
+    w_expr = "iw" if box_width is None else str(max(1, box_width))
+    if align == "center":
+        x_expr = f"(iw-{w_expr})/2"
+    elif align == "right":
+        x_expr = f"iw-{w_expr}"
+    else:
+        x_expr = "0"
+
+    y_expr = f"h-{margin_bottom}-{box_h}"
+
+    return (
+        f"drawbox=x={x_expr}:"
+        f"y={y_expr}:"
+        f"w={w_expr}:h={box_h}:"
+        f"color=black@{alpha}:"
+        f"t=fill"
+    )
+
+
+# ----------------------------
 # Typer command
 # ----------------------------
 def render_video(
@@ -330,6 +419,32 @@ def render_video(
     audio_mp3: Path | None = typer.Option(None, "--audio", "-a"),
     output: Path | None = typer.Option(None, "--output", "-o"),
     method: Literal["ass", "drawtext"] = typer.Option("ass"),
+    caption_box: bool = typer.Option(
+        False,
+        "--caption-box/--no-caption-box",
+        help="Add a translucent box beneath the captions after rendering",
+    ),
+    caption_box_height: int = typer.Option(
+        260, "--caption-box-height", help="Height of the caption box (pixels)"
+    ),
+    caption_box_alpha: float = typer.Option(
+        0.75, "--caption-box-alpha", help="Opacity of the caption box (0-1)"
+    ),
+    caption_box_width: Optional[int] = typer.Option(
+        None,
+        "--caption-box-width",
+        help="Width of the caption box in pixels (default: full width)",
+    ),
+    caption_box_align: Literal["left", "center", "right"] = typer.Option(
+        "center",
+        "--caption-box-align",
+        help="Horizontal alignment for the caption box when width is set",
+    ),
+    caption_box_margin_bottom: Optional[int] = typer.Option(
+        None,
+        "--caption-box-margin-bottom",
+        help="Bottom margin (pixels) for the caption box position; default auto-aligns with captions",
+    ),
     ctx: typer.Context = typer.Option(None, hidden=True),
 ):
     if not isinstance(ctx.obj, AppContainer):
@@ -341,12 +456,38 @@ def render_video(
         raise typer.BadParameter("Cache key not found")
 
     segments = _normalize_segments(data)
+    # Estimate max line count to align box near the caption area when auto margin is used.
+    max_lines = 1
+    for seg in segments:
+        _, lines = _prepare_wrapped_text(seg["text"])
+        max_lines = max(max_lines, lines)
+
+    global _ACTIVE_CAPTION_BOX_H, _ACTIVE_CAPTION_BOX_PAD_BOTTOM
+    _ACTIVE_CAPTION_BOX_H = CAPTION_BOX_H_DEFAULT
+    _ACTIVE_CAPTION_BOX_PAD_BOTTOM = CAPTION_BOX_PAD_BOTTOM_DEFAULT
 
     out = output or video_path.with_stem(video_path.stem + "_captioned")
+    box_filter = None
+    if caption_box:
+        auto_margin = max(0, ASS_MARGIN_V + _caption_vertical_offset(max_lines) - 40)
+        margin_bottom = (
+            caption_box_margin_bottom
+            if caption_box_margin_bottom is not None
+            else auto_margin
+        )
+        _ACTIVE_CAPTION_BOX_H = caption_box_height
+        _ACTIVE_CAPTION_BOX_PAD_BOTTOM = caption_box_margin_bottom or 0
+        box_filter = _build_box_filter(
+            box_h=caption_box_height,
+            alpha=caption_box_alpha,
+            box_width=caption_box_width,
+            align=caption_box_align,
+            margin_bottom=margin_bottom,
+        )
 
     with tempfile.TemporaryDirectory() as tmp:
         tmp_dir = Path(tmp)
-        parts = _render_parts(video_path, segments, tmp_dir, method)
+        parts = _render_parts(video_path, segments, tmp_dir, method, box_filter)
         merged = _concat(parts, tmp_dir)
 
         if audio_mp3:

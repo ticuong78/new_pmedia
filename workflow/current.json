@@ -15,10 +15,10 @@
       "type": "n8n-nodes-base.localFileTrigger",
       "typeVersion": 1,
       "position": [
-        0,
-        0
+        -2128,
+        288
       ],
-      "id": "79dd86e0-adee-4dc0-9ef2-77d061fad3a4",
+      "id": "936c0ce9-4ae5-4ab1-aa2d-b1f763abc121",
       "name": "Local File Trigger"
     },
     {
@@ -28,10 +28,10 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        224,
-        0
+        -1904,
+        288
       ],
-      "id": "a12024e6-a888-4ba9-88b9-e70c90b2529d",
+      "id": "4df92457-71ee-48d2-b9fe-c4aa1473935b",
       "name": "Execute Command"
     },
     {
@@ -41,10 +41,10 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        448,
-        0
+        -1680,
+        288
       ],
-      "id": "c7a49043-8f1a-4cfd-937c-82fcebd9b15e",
+      "id": "8414c5ee-1fc9-48a3-be4f-c933fdab71f5",
       "name": "Execute Command1"
     },
     {
@@ -54,10 +54,10 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        672,
-        0
+        -1456,
+        288
       ],
-      "id": "a929c915-63d9-4e9b-a79e-c53819eff750",
+      "id": "a3a5387f-f073-4167-bce2-57442345fce8",
       "name": "Execute Command2"
     },
     {
@@ -67,10 +67,10 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        896,
-        0
+        -1232,
+        288
       ],
-      "id": "8d0db1cc-9188-4587-a650-833285563c87",
+      "id": "be3db9b1-480b-4b21-ae1a-cd314c6fc594",
       "name": "Execute Command3"
     },
     {
@@ -80,10 +80,10 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        1344,
-        0
+        -784,
+        288
       ],
-      "id": "df71bcf6-27eb-4749-8e31-499879e04b4d",
+      "id": "e4f89e92-4ed3-4101-81fe-da7942813807",
       "name": "Execute Command4"
     },
     {
@@ -94,10 +94,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1120,
-        0
+        -1008,
+        288
       ],
-      "id": "2d4e49de-7161-432a-a5a6-3ce75e41db9f",
+      "id": "cc7cb1c2-0ddb-4793-a4af-e30510608b53",
       "name": "Code in Python (Beta)"
     },
     {
@@ -107,10 +107,10 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        1568,
-        0
+        -560,
+        288
       ],
-      "id": "98ade42d-d1b4-4cdb-b0f5-5380662a677a",
+      "id": "e2579569-1b92-4a15-ba07-646dd605afcf",
       "name": "Execute Command5"
     },
     {
@@ -120,10 +120,10 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        1792,
-        0
+        -336,
+        288
       ],
-      "id": "14e9b35f-81c3-4ea3-b9f2-74a8d2da8e1b",
+      "id": "ee047885-b578-4ff8-adee-fbdc2fb355cb",
       "name": "Execute Command6"
     },
     {
@@ -133,24 +133,24 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        2896,
-        0
+        592,
+        288
       ],
-      "id": "24128f7c-6cad-400b-ad3e-397c1459c42b",
+      "id": "6d2e7ca2-7533-48c9-b946-dd118b4daa84",
       "name": "Execute Command10",
       "disabled": true
     },
     {
       "parameters": {
-        "command": "=uv run python -m src.main segment  {{ $json.stdout }} --technique punctuation --punctuation \".\""
+        "command": "=uv run python -m src.main segment  {{ $json.stdout }} --technique words_count --max-words-per-segment 10"
       },
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        2016,
-        0
+        -112,
+        288
       ],
-      "id": "3452258b-339e-404a-9010-2cd2027f8232",
+      "id": "9262ca1b-0410-4e11-9e42-828527e3aca1",
       "name": "Segment 2"
     },
     {
@@ -160,37 +160,24 @@
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        2240,
-        0
+        112,
+        288
       ],
-      "id": "b74ab8da-33ed-4e56-ab9c-db0db4ba45a8",
+      "id": "4b7b15a6-fd34-4eb5-badf-e852f8f28827",
       "name": "Map"
     },
     {
       "parameters": {
-        "command": "=uv run python -m src.main video {{ $json.stdout }} --video {{ $('Code in Python (Beta)').item.json.original }} --audio {{ $('Code in Python (Beta)').item.json.speed_up }} --method ass"
+        "command": "=uv run python -m src.main video {{ $json.stdout }} --video {{ $('Code in Python (Beta)').item.json.original }} --audio {{ $('Code in Python (Beta)').item.json.speed_up }} --method ass --caption-box --caption-box-width 1050 --caption-box-align center --caption-box-margin-bottom -1300 --caption-box-height 260 --caption-box-alpha 1"
       },
       "type": "n8n-nodes-base.executeCommand",
       "typeVersion": 1,
       "position": [
-        2672,
-        0
+        336,
+        288
       ],
-      "id": "c14bac3d-3b51-4d05-bbb1-2fd255945d57",
+      "id": "ef9ad3e8-dcc2-48b7-b09d-23dbe0c70d85",
       "name": "Concate video"
-    },
-    {
-      "parameters": {
-        "command": "=uv run python -m src.main build_c --goc-key {{ $('Execute Command2').item.json.stdout }} --rut-key {{ $('Segment 2').item.json.stdout }} --map-key {{ $json.stdout }}"
-      },
-      "type": "n8n-nodes-base.executeCommand",
-      "typeVersion": 1,
-      "position": [
-        2448,
-        0
-      ],
-      "id": "164dbd64-7b0c-46db-b3eb-68a52cc16682",
-      "name": "Execute Command7"
     }
   ],
   "pinData": {},
@@ -309,7 +296,7 @@
       "main": [
         [
           {
-            "node": "Execute Command7",
+            "node": "Concate video",
             "type": "main",
             "index": 0
           }
@@ -326,27 +313,16 @@
           }
         ]
       ]
-    },
-    "Execute Command7": {
-      "main": [
-        [
-          {
-            "node": "Concate video",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
     }
   },
   "active": false,
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "cb8bf046-c591-4b36-b477-d78a48faafd2",
+  "versionId": "ae48cf21-cc85-4f23-99f6-c6b4677a9448",
   "meta": {
-    "instanceId": "f5fbe5e204e81d7b9d542db4e23137f3d0ecdae653f5c0fdbd8623cc339f4d13"
+    "instanceId": "effd772192f543bca217cacc5f023c9bbf3bd77c504dd74a40420c31f7422b98"
   },
-  "id": "dDEkt31d9txl36aO",
+  "id": "1VBFvpE7hgAUSOhx",
   "tags": []
 }
